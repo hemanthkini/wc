@@ -9,6 +9,7 @@ typedef struct fileinfo {
     char* filepath;
 } info;
 
+
 int *arrayCount = NULL;
 static int numOfThreads;
 static int bytesPerThread;
@@ -77,29 +78,35 @@ void *threadFunction(void * vargp)
     info* currInfo = (info *)vargp;
     FILE * theFile = fopen(currInfo->filepath, "r");
     fseek(theFile, bytesPerThread * currInfo->id, SEEK_SET);
+    printf("thread %d starts at offset %d\n", currInfo->id, currInfo->id * bytesPerThread);
     int i = ((currInfo->id == (numOfThreads - 1)) ? (totalBytes + 1) : bytesPerThread);
     int words = 0;
-    char test;
+    int test;
     int startWhiteSpace = 0;
-    while (i != 0)
+    while (i != 0 )
     {
         i--;
         test = fgetc(theFile);
-        //    printf("DEBUG: char:%c; words: %d\n", test, words);
+        printf("DEBUG: char:%c\n", test);
         if ((unsigned)test < 33 || (unsigned)test == 127)
         {
-//          printf("charint for whitespace: %u\n", (unsigned)test);
             if (!startWhiteSpace)
                 startWhiteSpace = 1;
-            if (test == EOF)
+            if (feof(theFile) || test == EOF)
             {
-                //               printf("eof!");
+                printf("eof!");
                 words++;
                 i = 0;
             }
-        }
+        } /* NEEDS A STRUCT WITH space at beginning, space at end, and words
+             in middle  and then reduce across it, like parens problem */
         else
         {
+            if (feof(theFile) || test == EOF)
+            {
+                printf("eof!");
+                i = 0;
+            }
             if (startWhiteSpace)
             {
                 startWhiteSpace = 0;
@@ -108,7 +115,6 @@ void *threadFunction(void * vargp)
         }
 
     }
-//    printf("final words: %d\n", words);
     arrayCount[currInfo->id] = words;
     fclose(theFile);
     free(currInfo->filepath);
