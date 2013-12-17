@@ -77,24 +77,39 @@ void *threadFunction(void * vargp)
     info* currInfo = (info *)vargp;
     FILE * theFile = fopen(currInfo->filepath, "r");
     fseek(theFile, bytesPerThread * currInfo->id, SEEK_SET);
-    int i = ((currInfo->id == (numOfThreads - 1)) ? totalBytes : bytesPerThread);
-    int spaces = 0;
+    int i = ((currInfo->id == (numOfThreads - 1)) ? (totalBytes + 1) : bytesPerThread);
+    int words = 0;
+    char test;
+    int startWhiteSpace = 0;
     while (i != 0)
     {
         i--;
-        switch(fgetc(theFile)) {
-          case '\n':
-          case ' ':
-            spaces++;
-            break;
-          case EOF:
-            i = 0;
-            break;
-          default:
-            break;
+        test = fgetc(theFile);
+        //    printf("DEBUG: char:%c; words: %d\n", test, words);
+        if ((unsigned)test < 33 || (unsigned)test == 127)
+        {
+//          printf("charint for whitespace: %u\n", (unsigned)test);
+            if (!startWhiteSpace)
+                startWhiteSpace = 1;
+            if (test == EOF)
+            {
+                //               printf("eof!");
+                words++;
+                i = 0;
+            }
         }
+        else
+        {
+            if (startWhiteSpace)
+            {
+                startWhiteSpace = 0;
+                words++;
+            }
+        }
+
     }
-    arrayCount[currInfo->id] = spaces;
+//    printf("final words: %d\n", words);
+    arrayCount[currInfo->id] = words;
     fclose(theFile);
     free(currInfo->filepath);
     free(currInfo);
