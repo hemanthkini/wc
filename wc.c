@@ -9,8 +9,13 @@ typedef struct fileinfo {
     char* filepath;
 } info;
 
+typedef struct threadinfo {
+    int spacesBegin;
+    int spacesEnd;
+    int count;
+} ti;
 
-int *arrayCount = NULL;
+ti *arrayCount = NULL;
 static int numOfThreads;
 static int bytesPerThread;
 static int totalBytes;
@@ -33,7 +38,7 @@ int main(int argc, char* argv[])
     fstat(fd, &filestats);
     totalBytes = filestats.st_size;
     bytesPerThread = totalBytes / numOfThreads;
-    arrayCount = calloc(numOfThreads, sizeof(int));
+    arrayCount = calloc(numOfThreads, sizeof(ti));
     fclose(theFile);
 
     if (arrayCount == NULL)
@@ -60,11 +65,19 @@ int main(int argc, char* argv[])
         pthread_create(&arrayThreads[i], NULL, &threadFunction, (void *)currInfo);
     }
     int sum = 0;
-    for (i = 0; i < numOfThreads; i++)
+    for (i = 0; i < numOfThreads-1; i++)
     {
         pthread_join(arrayThreads[i], NULL);
-        sum = sum + arrayCount[i];
+        sum = sum + arrayCount[i].count;
+        if (arrayCount[i].spacesEnd && !(arrayCount[i+1].spacesBegin))
+        {
+            sum++;
+        }
     }
+    pthread_join(arrayThreads[i], NULL);
+    sum = sum + arrayCount[i].count;
+
+
     printf("word count: %d\n", sum);
 
     free(arrayCount);
@@ -80,16 +93,18 @@ void *threadFunction(void * vargp)
     fseek(theFile, bytesPerThread * currInfo->id, SEEK_SET);
     printf("thread %d starts at offset %d\n", currInfo->id, currInfo->id * bytesPerThread);
     int i = ((currInfo->id == (numOfThreads - 1)) ? (totalBytes + 1) : bytesPerThread);
+    int num = i;
     int words = 0;
     int test;
     int startWhiteSpace = 0;
-    while (i != 0 )
+    while (i != 0)
     {
         i--;
         test = fgetc(theFile);
-        printf("DEBUG: char:%c\n", test);
+        //printf("DEBUG: char:%c\n", test);
         if ((unsigned)test < 33 || (unsigned)test == 127)
         {
+            if (num - 1 == i) arrayCount[currInfo->id].spacesBegin = 1;
             if (!startWhiteSpace)
                 startWhiteSpace = 1;
             if (feof(theFile) || test == EOF)
@@ -98,6 +113,7 @@ void *threadFunction(void * vargp)
                 words++;
                 i = 0;
             }
+            if (i == 0 && (test != EOF && !feof(theFile))) arrayCount[currInfo->id].spacesEnd = 1;
         } /* NEEDS A STRUCT WITH space at beginning, space at end, and words
              in middle  and then reduce across it, like parens problem */
         else
@@ -115,7 +131,7 @@ void *threadFunction(void * vargp)
         }
 
     }
-    arrayCount[currInfo->id] = words;
+    arrayCount[currInfo->id].count = words;
     fclose(theFile);
     free(currInfo->filepath);
     free(currInfo);
