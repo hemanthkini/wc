@@ -1,4 +1,4 @@
 wc
 ==
 
-word count replacement, maybe
+word count replacement, maybe. It's multithreaded! 
